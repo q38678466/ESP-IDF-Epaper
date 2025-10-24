@@ -340,6 +340,40 @@ void Paint_Clear(u8 Color)
   }
 }
 
+void EPD_ClearWindows(u16 xs, u16 ys, u16 xe, u16 ye, u16 color)
+{
+    u16 x, y;
+    u32 addr;
+    u8 mask;
+    u8 temp;
+
+    // 边界保护，防止越界
+    if (xs >= Paint.width) xs = Paint.width - 1;
+    if (xe >= Paint.width) xe = Paint.width - 1;
+    if (ys >= Paint.height) ys = Paint.height - 1;
+    if (ye >= Paint.height) ye = Paint.height - 1;
+    if (xs > xe) { u16 t = xs; xs = xe; xe = t; }
+    if (ys > ye) { u16 t = ys; ys = ye; ye = t; }
+
+    for (y = ys; y <= ye; y++)
+    {
+        for (x = xs; x <= xe; x++)
+        {
+            addr = (x / 8) + y * Paint.widthByte;  // 计算字节地址
+            mask = 0x80 >> (x % 8);                // 计算当前像素在字节中的位置
+
+            temp = Paint.Image[addr];
+
+            if (color)  // color = 1（白）或 0（黑）
+                temp |= mask;   // 写白（置1）
+            else
+                temp &= ~mask;  // 写黑（清0）
+
+            Paint.Image[addr] = temp;
+        }
+    }
+}
+
 
 /*******************************************************************
     函数说明：点亮一个像素点
@@ -914,6 +948,7 @@ void epaper_init_gpio(void)
 
 void epaper_spi_init(void)
 {
+  static float num = 14.81;
     ESP_LOGI(TAG, "Initializing SPI");
     esp_err_t ret;
     spi_bus_config_t buscfg = {
@@ -944,12 +979,24 @@ void epaper_spi_init(void)
     Paint_NewImage(ImageBW,EPD_W,EPD_H,180,WHITE);    //创建画布
     Paint_Clear(WHITE);  
     EPD_Init();
+    EPD_FastMode1Init();
+    EPD_Display_Clear();
+    EPD_FastUpdate();//更新画面显示
+    EPD_Clear_R26H();
     EPD_ShowPicture(0,88,32,32,gImage_temp,BLACK);
     EPD_ShowPicture(0,120,32,32,gImage_himi,BLACK);
-    // EPD_ShowString(0,58,(unsigned char *)"hello",16,BLACK);
-
+    EPD_ShowWatch(12,20,num,4,2,48,BLACK);    
     EPD_Display(ImageBW);
-    Paint_Clear(WHITE);
-    EPD_Update();
-    EPD_DeepSleep();
+    EPD_PartUpdate();
+    vTaskDelay(2000/portTICK_PERIOD_MS);
+    while(1)
+    {
+      /*********************局刷模式**********************/
+      EPD_ShowWatch(12,20,num,4,2,48,BLACK);   
+      num+=0.01;
+      EPD_Display(ImageBW);
+      EPD_PartUpdate();
+      vTaskDelay(500/portTICK_PERIOD_MS);
+    }
+
 }
