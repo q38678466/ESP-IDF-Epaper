@@ -941,13 +941,15 @@ void epaper_spi_init(void)
     ESP_LOGI(TAG,"Initializing EPD GPIO");
     epaper_init_gpio();
     u8 ImageBW[2888];
-    Paint_NewImage(ImageBW,EPD_W,EPD_H,0,WHITE);    //创建画布
+    Paint_NewImage(ImageBW,EPD_W,EPD_H,180,WHITE);    //创建画布
     Paint_Clear(WHITE);  
     EPD_Init();
-    EPD_ShowPicture(0,0,152,152,gImage_1,BLACK);
+    EPD_ShowPicture(0,88,32,32,gImage_temp,BLACK);
+    EPD_ShowPicture(0,120,32,32,gImage_himi,BLACK);
+    // EPD_ShowString(0,58,(unsigned char *)"hello",16,BLACK);
+
     EPD_Display(ImageBW);
     Paint_Clear(WHITE);
     EPD_Update();
     EPD_DeepSleep();
-    // delay_ms(1000);
 }

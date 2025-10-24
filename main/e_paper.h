@@ -36,7 +36,7 @@ Rotaion:90-90度方向
 Rotaion:180-180度方向
 Rotaion:270-270度方向
 *******************/
-#define Rotation 0  
+#define Rotation 2  
 
 void epaper_spi_init();
 void Paint_NewImage(u8 *image,u16 Width,u16 Height,u16 Rotate,u16 Color); 					 //创建画布控制显示方向
