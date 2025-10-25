@@ -28,6 +28,7 @@ typedef struct {
 	
 }PAINT;
 extern PAINT Paint;
+extern u8 ImageBW[2888];
 
 //定义E-Paper显示方向 
 /*******************
@@ -36,9 +37,18 @@ Rotaion:90-90度方向
 Rotaion:180-180度方向
 Rotaion:270-270度方向
 *******************/
-#define Rotation 2  
+#define Rotation 180  
 
 void epaper_spi_init();
+void EPD_Init(void);
+void EPD_FastMode1Init();
+void EPD_Display_Clear();
+void EPD_FastUpdate(void);
+void EPD_Clear_R26H(void);
+void EPD_Display(const u8 *image);
+void EPD_Update(void);
+void EPD_PartUpdate(void);
+void EPD_DeepSleep(void);
 void Paint_NewImage(u8 *image,u16 Width,u16 Height,u16 Rotate,u16 Color); 					 //创建画布控制显示方向
 void Paint_SetPixel(u16 Xpoint,u16 Ypoint,u16 Color);
 void Paint_Clear(u8 Color);
@@ -52,4 +62,6 @@ void EPD_ShowPicture(u16 x,u16 y,u16 sizex,u16 sizey,const u8 BMP[],u16 Color);	
 void EPD_ClearWindows(u16 xs,u16 ys,u16 xe,u16 ye,u16 color);
 void EPD_ShowFloatNum1(u16 x,u16 y,float num,u8 len,u8 pre,u8 sizey,u8 color);
 void EPD_ShowWatch(u16 x,u16 y,float num,u8 len,u8 pre,u8 sizey,u8 color);
+void EPD_ShowNum_Two(u16 x, u16 y, u16 num1, u8 sizey, u8 color);
+void EPD_ShowSensor_Data(u16 x,u16 y,float num,u8 len,u8 pre,u8 sizey,u8 color);
 #endif

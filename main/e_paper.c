@@ -9,7 +9,6 @@
 #include "driver/spi_master.h"
 #include "driver/gpio.h"
 #include "EPD_Font.h"
-#include "Pic.h"
 PAINT Paint;
 // SPI Bus
 #define EPD_PANEL_SPI_CLK           1000000
@@ -28,7 +27,7 @@ PAINT Paint;
 static const char *TAG = "epaper_demo_plain";
 #define EPAPER_SPI_HOST    SPI2_HOST
 spi_device_handle_t spi;
-
+u8 ImageBW[2888];
 
 
 void EPD_DC_Clr()
@@ -891,6 +890,40 @@ void EPD_ShowWatch(u16 x,u16 y,float num,u8 len,u8 pre,u8 sizey,u8 color)
   }
 }
 
+void EPD_ShowNum_Two(u16 x, u16 y, u16 num1, u8 sizey, u8 color)
+{
+    u8 t, temp;
+    u8 sizex = sizey / 2;
+
+
+    // 显示最高位（十位）
+    temp = num1 / 10;
+    EPD_ShowChar(x, y, temp + '0', sizey, color);
+
+    // 显示第二位（个位）
+    temp = num1 % 10;
+    EPD_ShowChar(x + sizex, y, temp + '0', sizey, color);
+}
+
+void EPD_ShowSensor_Data(u16 x,u16 y,float num,u8 len,u8 pre,u8 sizey,u8 color)
+{           
+  u8 t,temp,sizex;
+  u16 num1;
+  sizex=sizey/2;
+  num1=num*EPD_Pow(10,pre);
+  for(t=0;t<len;t++)
+  {
+    temp=(num1/EPD_Pow(10,len-t-1))%10;
+    if(t==(len-pre))
+    {
+      EPD_ShowChar(x+(len-pre)*sizex+(sizex/2-2),y,'.',sizey,color);
+      t++;
+      len+=1;
+    }
+     EPD_ShowChar(x+t*sizex,y,temp+48,sizey,color);
+  }
+}
+
 
 
 void EPD_ShowPicture(u16 x,u16 y,u16 sizex,u16 sizey,const u8 BMP[],u16 Color)
@@ -948,7 +981,6 @@ void epaper_init_gpio(void)
 
 void epaper_spi_init(void)
 {
-  static float num = 14.81;
     ESP_LOGI(TAG, "Initializing SPI");
     esp_err_t ret;
     spi_bus_config_t buscfg = {
@@ -975,28 +1007,8 @@ void epaper_spi_init(void)
 
     ESP_LOGI(TAG,"Initializing EPD GPIO");
     epaper_init_gpio();
-    u8 ImageBW[2888];
     Paint_NewImage(ImageBW,EPD_W,EPD_H,180,WHITE);    //创建画布
     Paint_Clear(WHITE);  
-    EPD_Init();
-    EPD_FastMode1Init();
-    EPD_Display_Clear();
-    EPD_FastUpdate();//更新画面显示
-    EPD_Clear_R26H();
-    EPD_ShowPicture(0,88,32,32,gImage_temp,BLACK);
-    EPD_ShowPicture(0,120,32,32,gImage_himi,BLACK);
-    EPD_ShowWatch(12,20,num,4,2,48,BLACK);    
-    EPD_Display(ImageBW);
-    EPD_PartUpdate();
-    vTaskDelay(2000/portTICK_PERIOD_MS);
-    while(1)
-    {
-      /*********************局刷模式**********************/
-      EPD_ShowWatch(12,20,num,4,2,48,BLACK);   
-      num+=0.01;
-      EPD_Display(ImageBW);
-      EPD_PartUpdate();
-      vTaskDelay(500/portTICK_PERIOD_MS);
-    }
+    
 
 }
