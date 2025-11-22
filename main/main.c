@@ -26,34 +26,14 @@
 #include "device_config.h"
 #include "my_wifi.h"
 #include "my_http_server.h"
+#include "system_time.h"
 #define TAG "main"
 
-//http://acs.m.taobao.com/gw/mtop.common.getTimestamp/
 
 // 全局互斥锁句柄
 SemaphoreHandle_t epd_mutex;
 float temperature, humidity;
-/// @brief 设置系统时区为中国标准时间
-/// @param  
-void set_system_time_country(void)
-{
-    setenv("TZ", "CST-8", 1);
-    tzset();
-}
 
-/// @brief 设置系统时间
-/// @param timestamp 时间戳
-void set_system_time(time_t timestamp) {
-    struct timeval tv;
-    tv.tv_sec = timestamp;   // 秒
-    tv.tv_usec = 0;          // 微秒
-
-    if (settimeofday(&tv, NULL) == 0) {
-        ESP_LOGI(TAG,"system time set successfully");
-    } else {
-        ESP_LOGE(TAG,"system time set failed");
-    }
-}
 
 
 void epaper_main_task(void *pvParameter)
@@ -66,6 +46,7 @@ void epaper_main_task(void *pvParameter)
     EPD_Clear_R26H();
     EPD_ShowPicture(0,88,32,32,gImage_temp,BLACK);
     EPD_ShowPicture(0,120,32,32,gImage_himi,BLACK);
+    EPD_ShowPicture(97,72,53,80,gImage_comfor,BLACK);
     EPD_ShowSensor_Data(32,90,temperature,4,2,24,BLACK);
     EPD_ShowSensor_Data(32,122,humidity,4,2,24,BLACK);
     EPD_ShowWatch(12,10,0,4,2,48,BLACK);
@@ -86,17 +67,24 @@ void epaper_main_task(void *pvParameter)
         u16 time_sec = tv_now.tv_sec % 60;
 
         my_sht30_get_data(&temperature, &humidity);
-        // 获取显示锁进行局部更新
+        //这边加锁是防止要进入睡眠，睡眠回调的换图跟这边的刷新冲突
         if (xSemaphoreTake(epd_mutex, portMAX_DELAY) == pdTRUE) {
             EPD_ShowWatch(12,10,time_val,4,2,48,BLACK);
             EPD_ShowNum_Two(135,38,time_sec,12,BLACK);
             EPD_ShowSensor_Data(32,90,temperature,4,2,24,BLACK);
             EPD_ShowSensor_Data(32,122,humidity,4,2,24,BLACK);
+            if(temperature>30.0){
+                EPD_ShowPicture(97,72,53,80,gImage_hot,BLACK);
+            }else if(temperature<20.0){
+                EPD_ShowPicture(97,72,53,80,gImage_cold,BLACK);
+            }else{
+                EPD_ShowPicture(97,72,53,80,gImage_comfor,BLACK);
+            }
             EPD_Display(ImageBW);
             EPD_PartUpdate();
             xSemaphoreGive(epd_mutex); // 释放锁
         }
-        vTaskDelay(2000/portTICK_PERIOD_MS);
+        vTaskDelay(500/portTICK_PERIOD_MS);
     }
 }
 
@@ -115,6 +103,7 @@ void enter_deep_sleep_cb(void)
         EPD_Display(ImageBW);
         EPD_PartUpdate();
         EPD_DeepSleep();
+        xSemaphoreGive(epd_mutex); // 释放锁
     }
     // vTaskDelay(5000/portTICK_PERIOD_MS);
 }
@@ -134,7 +123,7 @@ void app_main(void)
     config_read();
     printf_weakeup_reason();
     set_system_time_country();
-    set_system_time(1761128634);
+    // set_system_time(1761128634);
     my_button_init();
     my_sht30_init();
     epaper_spi_init();
