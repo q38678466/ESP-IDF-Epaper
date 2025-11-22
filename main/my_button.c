@@ -10,6 +10,7 @@
 #include "my_sht30.h"
 #include "deep_sleep.h"
 #include "my_wifi.h"
+#include "system_time.h"
 #define TAG "my_button"
 
 
@@ -17,23 +18,41 @@ extern float temperature, humidity;
 static void main_button_event_cb(void *arg, void *data)
 {
     iot_button_print_event((button_handle_t)arg);
-
-    int repeat = iot_button_get_repeat((button_handle_t)arg);
-    if(repeat >= 3)
+    button_event_t event = iot_button_get_event((button_handle_t)arg);
+    switch (event)
     {
+    case BUTTON_SINGLE_CLICK:
+        my_sht30_get_data(&temperature, &humidity);
+        printf("temperature:%.2f, humidity:%.2f\n", temperature, humidity);
+        reset_deep_sleep_timer_count();
+        break;
+    case BUTTON_LONG_PRESS_UP:
         ESP_LOGI(TAG, "enter wifi config mode");
         enter_wifi_config_mode_reset();
+        break;
+    default:
+        break;
     }
     
-    my_sht30_get_data(&temperature, &humidity);
-    printf("temperature:%.2f, humidity:%.2f\n", temperature, humidity);
-    reset_deep_sleep_timer_count();
 
 }
 
 static void up_button_event_cb(void *arg, void *data)
 {
     iot_button_print_event((button_handle_t)arg);
+    button_event_t event = iot_button_get_event((button_handle_t)arg);
+    switch (event)
+    {
+    case BUTTON_SINGLE_CLICK:
+        break;
+    case BUTTON_LONG_PRESS_START:
+        get_network_time();
+        change_deep_sleep_timer_period(20 *1000); 
+        break;
+    default:
+        break;
+    }
+    
 }
 
 static void down_button_event_cb(void *arg, void *data)
@@ -68,8 +87,9 @@ void my_button_init(void)
     ret = iot_button_new_gpio_device(&btn_cfg, &gpio_cfg, &mid_btn);
 
     ret = iot_button_register_cb(main_btn, BUTTON_SINGLE_CLICK, NULL, main_button_event_cb, NULL);
-    ret = iot_button_register_cb(main_btn, BUTTON_PRESS_REPEAT_DONE, NULL, main_button_event_cb, NULL);
+    ret = iot_button_register_cb(main_btn, BUTTON_LONG_PRESS_UP, NULL, main_button_event_cb, NULL);
     ret = iot_button_register_cb(up_btn, BUTTON_SINGLE_CLICK, NULL, up_button_event_cb, NULL);
+    ret = iot_button_register_cb(up_btn, BUTTON_LONG_PRESS_START, NULL, up_button_event_cb, NULL);
     ret = iot_button_register_cb(down_btn, BUTTON_SINGLE_CLICK, NULL, down_button_event_cb, NULL);
     ret = iot_button_register_cb(mid_btn, BUTTON_SINGLE_CLICK, NULL, mid_button_event_cb, NULL);
     
