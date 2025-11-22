@@ -74,6 +74,26 @@ esp_err_t reset_deep_sleep_timer_count()
     return ESP_OK;
 }
 
+/// @brief 修改深度睡眠定时器的倒计时
+/// @param time_in_ms 新的倒计时时间，单位：毫秒
+esp_err_t change_deep_sleep_timer_period(uint64_t time_in_ms)
+{
+    if (my_timer == NULL) {
+        ESP_LOGE(TAG, "Timer not created!");
+        return ESP_FAIL;
+    }
+
+    if (xTimerChangePeriod(my_timer, pdMS_TO_TICKS(time_in_ms), 0) != pdPASS) {
+        ESP_LOGE(TAG, "Failed to change timer period!");
+        return ESP_FAIL;
+    }
+
+    ESP_LOGI(TAG, "Deep sleep timer period changed to %llu ms", time_in_ms);
+
+    reset_deep_sleep_timer_count();
+    return ESP_OK;
+}
+
 void register_deep_sleep_callback(deep_sleep_cb cb)
 {
     user_deep_sleep_callback = cb;

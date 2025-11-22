@@ -23,7 +23,9 @@
 #include "my_sht30.h"
 #include "deep_sleep.h"
 #include "my_button.h"
-
+#include "device_config.h"
+#include "my_wifi.h"
+#include "my_http_server.h"
 #define TAG "main"
 
 //http://acs.m.taobao.com/gw/mtop.common.getTimestamp/
@@ -122,7 +124,14 @@ void enter_deep_sleep_cb(void)
 
 void app_main(void)
 {
-    
+    //Initialize NVS
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+      ESP_ERROR_CHECK(nvs_flash_erase());
+      ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(ret);
+    config_read();
     printf_weakeup_reason();
     set_system_time_country();
     set_system_time(1761128634);
@@ -135,10 +144,13 @@ void app_main(void)
         ESP_LOGE(TAG, "互斥锁创建失败!\n");
         return;
     }
-    xTaskCreate(epaper_main_task, "epaper_main_task", 2048, NULL, 10, NULL);
+    xTaskCreate(epaper_main_task, "epaper_main_task", 2048*2, NULL, 10, NULL);
     
     ESP_ERROR_CHECK(create_deep_sleep_timer(ENTER_DEEP_SLEEP_TIME));
     register_deep_sleep_callback(enter_deep_sleep_cb);
-    
+
+    //wifi中会调用定时器相关函数，必须在定时器初始化过后再初始化wifi
+    wifi_init();
+    start_webserver(1);
     
 }

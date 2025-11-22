@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ESP32 配网</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    background: #f2f2f2;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* 容器自适应屏幕 */
+  .container {
+    margin: 20px auto;
+    padding: 20px;
+    width: 80%;        /* 手机端自适应 */
+    max-width: 600px;  /* 大屏幕最大宽度 */
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.2);
+  }
+
+  h2, h3 {
+    color: #333;
+  }
+
+  .input-container, .password-container {
+    width: 100%;
+    margin: 10px 0;
+    position: relative;
+  }
+
+  input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 16px;
+  }
+
+  /* 密码可见按钮 */
+  #password { 
+    padding-right: 35px; 
+  } 
+  #togglePassword {
+    position: absolute; 
+    right: 8px; 
+    top: 15%; 
+    transform: translateY(-50%); 
+    background: none; 
+    border: none; 
+    cursor: pointer; 
+    color: #666; 
+    padding: 0; 
+    width: 24px; 
+    height: 24px; 
+    font-size: 16px;
+  }
+
+  button[type="button"], button[type="submit"] {
+    width: 100%;
+    padding: 12px;
+    margin: 15px 0;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+  }
+  button:hover {
+    background: #45a049;
+  }
+
+  /* WiFi 列表 */
+  ul#wifiList {
+    list-style: none;
+    padding: 0;
+    margin: 15px 0;
+    max-height: 250px; /* 固定高度 */
+    overflow-y: auto;  /* 可滚动 */
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background: #fff;
+  }
+
+  li {
+    padding: 12px;
+    border-bottom: 1px solid #eee;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  li:hover {
+    background: #e6f0ff;
+  }
+
+  /* 弹窗 */
+  #dialog {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    justify-content: center;
+    align-items: center;
+  }
+  #dialogBox {
+    background: white;
+    padding: 20px 40px;
+    border-radius: 10px;
+    font-size: 18px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h2>ESP32 WiFi 配网</h2>
+  <form>
+    <div class="input-container">
+      <input type="text" id="ssid" name="ssid" placeholder="WiFi 名称" required>
+    </div>
+
+    <div class="password-container">
+      <input type="password" id="password" name="password" placeholder="WiFi 密码" required>
+      <button type="button" id="togglePassword">👁️</button>
+    </div>
+
+    <button type="submit">连接</button>
+  </form>
+
+  <h3>可用 WiFi 列表</h3>
+  <ul id="wifiList">正在扫描...</ul>
+</div>
+
+<!-- 弹窗 -->
+<div id="dialog">
+  <div id="dialogBox">连接中，请稍候...</div>
+</div>
+
+<script>
+  // 弹窗
+  function showDialog(msg) {
+    document.getElementById('dialogBox').innerText = msg;
+    document.getElementById('dialog').style.display = 'flex';
+  }
+  function hideDialog() {
+    document.getElementById('dialog').style.display = 'none';
+  }
+
+  // 密码可见切换
+  document.getElementById('togglePassword').addEventListener('click', () => {
+    const password = document.getElementById('password');
+    const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+    password.setAttribute('type', type);
+    document.getElementById('togglePassword').textContent = type === 'password' ? '👁️' : '👁️‍🗨️';
+  });
+
+  // 选择 WiFi
+  function selectWifi(ssid) {
+    document.getElementById('ssid').value = ssid;
+    document.getElementById('password').focus();
+  }
+
+  // 加载 WiFi 列表
+  async function loadWifiList() {
+    try {
+      const res = await fetch('/scan');
+      const list = await res.json();
+      const ul = document.getElementById('wifiList');
+      ul.innerHTML = '';
+      if(list.length===0) { ul.innerHTML='<li>未找到可用WiFi</li>'; return; }
+      list.forEach(ap => {
+        const li = document.createElement('li');
+        li.innerText = ap;
+        li.onclick = () => selectWifi(ap);
+        ul.appendChild(li);
+      });
+    } catch(err) {
+      document.getElementById('wifiList').innerHTML='<li>扫描失败，请刷新重试</li>';
+      console.error(err);
+    }
+  }
+
+  // 连接 WiFi
+  async function connectWifi() {
+    const ssid = document.getElementById('ssid').value;
+    const password = document.getElementById('password').value;
+    if(!ssid) { alert("请输入WiFi名称"); return; }
+
+    showDialog("连接中，请稍候...");
+
+    try {
+      const res = await fetch("/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ssid,password})
+      });
+      const data = await res.json();
+      if(data.status==="ok") showDialog("✅ 连接成功！");
+      else showDialog("❌ 连接失败，请检查密码或信号");
+    } catch(err) {
+      showDialog("❌ 请求失败，请重试");
+    }
+
+    setTimeout(hideDialog, 3000);
+  }
+
+  window.onload = function() {
+    loadWifiList();
+    document.querySelector("form").addEventListener("submit", e=>{
+      e.preventDefault();
+      connectWifi();
+    });
+  }
+</script>
+</body>
+</html>

@@ -9,12 +9,22 @@
 #include "app_config.h"
 #include "my_sht30.h"
 #include "deep_sleep.h"
+#include "my_wifi.h"
+#define TAG "my_button"
 
 
 extern float temperature, humidity;
 static void main_button_event_cb(void *arg, void *data)
 {
     iot_button_print_event((button_handle_t)arg);
+
+    int repeat = iot_button_get_repeat((button_handle_t)arg);
+    if(repeat >= 3)
+    {
+        ESP_LOGI(TAG, "enter wifi config mode");
+        enter_wifi_config_mode_reset();
+    }
+    
     my_sht30_get_data(&temperature, &humidity);
     printf("temperature:%.2f, humidity:%.2f\n", temperature, humidity);
     reset_deep_sleep_timer_count();
@@ -58,6 +68,7 @@ void my_button_init(void)
     ret = iot_button_new_gpio_device(&btn_cfg, &gpio_cfg, &mid_btn);
 
     ret = iot_button_register_cb(main_btn, BUTTON_SINGLE_CLICK, NULL, main_button_event_cb, NULL);
+    ret = iot_button_register_cb(main_btn, BUTTON_PRESS_REPEAT_DONE, NULL, main_button_event_cb, NULL);
     ret = iot_button_register_cb(up_btn, BUTTON_SINGLE_CLICK, NULL, up_button_event_cb, NULL);
     ret = iot_button_register_cb(down_btn, BUTTON_SINGLE_CLICK, NULL, down_button_event_cb, NULL);
     ret = iot_button_register_cb(mid_btn, BUTTON_SINGLE_CLICK, NULL, mid_button_event_cb, NULL);
