@@ -26,7 +26,7 @@ static void main_button_event_cb(void *arg, void *data)
         printf("temperature:%.2f, humidity:%.2f\n", temperature, humidity);
         reset_deep_sleep_timer_count();
         break;
-    case BUTTON_LONG_PRESS_UP:
+    case BUTTON_LONG_PRESS_START:
         ESP_LOGI(TAG, "enter wifi config mode");
         enter_wifi_config_mode_reset();
         break;
@@ -87,7 +87,7 @@ void my_button_init(void)
     ret = iot_button_new_gpio_device(&btn_cfg, &gpio_cfg, &mid_btn);
 
     ret = iot_button_register_cb(main_btn, BUTTON_SINGLE_CLICK, NULL, main_button_event_cb, NULL);
-    ret = iot_button_register_cb(main_btn, BUTTON_LONG_PRESS_UP, NULL, main_button_event_cb, NULL);
+    ret = iot_button_register_cb(main_btn, BUTTON_LONG_PRESS_START, NULL, main_button_event_cb, NULL);
     ret = iot_button_register_cb(up_btn, BUTTON_SINGLE_CLICK, NULL, up_button_event_cb, NULL);
     ret = iot_button_register_cb(up_btn, BUTTON_LONG_PRESS_START, NULL, up_button_event_cb, NULL);
     ret = iot_button_register_cb(down_btn, BUTTON_SINGLE_CLICK, NULL, down_button_event_cb, NULL);
