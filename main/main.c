@@ -44,16 +44,8 @@ void epaper_main_task(void *pvParameter)
     EPD_Display_Clear();
     EPD_FastUpdate();//更新画面显示
     EPD_Clear_R26H();
-    EPD_ShowPicture(0,88,32,32,gImage_temp,BLACK);
-    EPD_ShowPicture(0,120,32,32,gImage_himi,BLACK);
-    EPD_ShowPicture(97,72,53,80,gImage_comfor,BLACK);
-    EPD_ShowSensor_Data(32,90,temperature,4,2,24,BLACK);
-    EPD_ShowSensor_Data(32,122,humidity,4,2,24,BLACK);
-    EPD_ShowWatch(12,10,0,4,2,48,BLACK);
-    EPD_ShowNum_Two(135,38,0,12,BLACK);
     EPD_Display(ImageBW);
     EPD_PartUpdate();
-    // vTaskDelay(2000/portTICK_PERIOD_MS);
     while(1)
     {
       /*********************局刷模式**********************/
@@ -69,10 +61,13 @@ void epaper_main_task(void *pvParameter)
         my_sht30_get_data(&temperature, &humidity);
         //这边加锁是防止要进入睡眠，睡眠回调的换图跟这边的刷新冲突
         if (xSemaphoreTake(epd_mutex, portMAX_DELAY) == pdTRUE) {
-            EPD_ShowWatch(12,10,time_val,4,2,48,BLACK);
-            EPD_ShowNum_Two(135,38,time_sec,12,BLACK);
+            EPD_ShowPicture(0,88,32,32,gImage_temp,BLACK);
+            EPD_ShowPicture(0,120,32,32,gImage_himi,BLACK);
+            EPD_ShowPicture(97,72,53,80,gImage_comfor,BLACK);
             EPD_ShowSensor_Data(32,90,temperature,4,2,24,BLACK);
             EPD_ShowSensor_Data(32,122,humidity,4,2,24,BLACK);
+            EPD_ShowWatch(12,10,time_val,4,2,48,BLACK);
+            EPD_ShowNum_Two(135,38,time_sec,12,BLACK);
             if(temperature>30.0){
                 EPD_ShowPicture(97,72,53,80,gImage_hot,BLACK);
             }else if(temperature<20.0){
@@ -80,6 +75,8 @@ void epaper_main_task(void *pvParameter)
             }else{
                 EPD_ShowPicture(97,72,53,80,gImage_comfor,BLACK);
             }
+
+            EPD_DrawLine(0, 70, 90, 70, BLACK);
             EPD_Display(ImageBW);
             EPD_PartUpdate();
             xSemaphoreGive(epd_mutex); // 释放锁
@@ -92,20 +89,14 @@ void epaper_main_task(void *pvParameter)
 /// @param  
 void enter_deep_sleep_cb(void)
 {
-    // struct tm tm_now;
-    // localtime_r(1643731200, &tm_now);
-
     if (xSemaphoreTake(epd_mutex, portMAX_DELAY) == pdTRUE) {
         Paint_Clear(WHITE);
-        EPD_Display(ImageBW);
-        EPD_PartUpdate();
         EPD_ShowPicture(0,0,152,152,gImage_cat,BLACK);
         EPD_Display(ImageBW);
         EPD_PartUpdate();
         EPD_DeepSleep();
         xSemaphoreGive(epd_mutex); // 释放锁
     }
-    // vTaskDelay(5000/portTICK_PERIOD_MS);
 }
 
 
